@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SLIME - Universal AI Assistant</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800 p-4 flex flex-wrap justify-between items-center bg-slate-900/50 backdrop-blur sticky top-0 z-50">
+    <div class="flex items-center space-x-2">
+      <span class="w-4 h-4 rounded-full bg-emerald-400 animate-pulse"></span>
+      <h1 class="text-2xl font-bold tracking-wider text-emerald-400">SLIME AI</h1>
+    </div>
+
+    <!-- Controls -->
+    <div class="flex flex-wrap gap-2 mt-2 sm:mt-0">
+      <!-- Language Selector -->
+      <select id="langSelect" class="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm focus:ring-2 focus:ring-emerald-400 outline-none">
+        <optgroup label="Indian Languages">
+          <option value="en-IN">English (India)</option>
+          <option value="hi-IN">Hindi (हिन्दी)</option>
+          <option value="ta-IN">Tamil (தமிழ்)</option>
+          <option value="te-IN">Telugu (తెలుగు)</option>
+          <option value="kn-IN">Kannada (ಕನ್ನಡ)</option>
+          <option value="ml-IN">Malayalam (മലയാളം)</option>
+          <option value="bn-IN">Bengali (বাংলা)</option>
+          <option value="mr-IN">Marathi (मराठी)</option>
+          <option value="gu-IN">Gujarati (ગુજરાતી)</option>
+          <option value="pa-IN">Punjabi (ਪੰਜਾਬੀ)</option>
+        </optgroup>
+        <optgroup label="Global Languages (120+ Supported)">
+          <option value="en-US">English (US)</option>
+          <option value="es-ES">Spanish (Español)</option>
+          <option value="fr-FR">French (Français)</option>
+          <option value="de-DE">German (Deutsch)</option>
+          <option value="ja-JP">Japanese (日本語)</option>
+          <option value="zh-CN">Chinese (Mandarin)</option>
+          <option value="ar-SA">Arabic (العربية)</option>
+          <option value="ru-RU">Russian (Русский)</option>
+        </optgroup>
+      </select>
+
+      <!-- Sector Selector -->
+      <select id="sectorSelect" class="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm outline-none">
+        <option value="general">🌐 Universal / World</option>
+        <option value="coder">💻 Code Generation</option>
+        <option value="education">🎓 Education</option>
+        <option value="health">🏥 Health</option>
+        <option value="finance">💰 Finance</option>
+      </select>
+    </div>
+  </header>
+
+  <!-- Chat Log -->
+  <main id="chatLog" class="flex-1 p-4 max-w-4xl w-full mx-auto overflow-y-auto space-y-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
+      <p class="text-emerald-400 font-semibold mb-1">SLIME AI</p>
+      <p class="text-slate-300">Hello! I am SLIME, your universal AI assistant. Speak or type your request. I can translate, write code, search apps, and answer queries worldwide.</p>
+    </div>
+  </main>
+
+  <!-- Input Bar -->
+  <footer class="border-t border-slate-800 p-4 bg-slate-900/60 sticky bottom-0">
+    <div class="max-w-4xl mx-auto flex flex-col gap-2">
+      <div class="flex items-center gap-2">
+        <!-- PDF / Document Picker -->
+        <label title="Attach Document / PDF" class="cursor-pointer bg-slate-800 hover:bg-slate-700 p-2.5 rounded-lg border border-slate-700 text-slate-300">
+          📎
+          <input type="file" id="fileInput" accept=".pdf,.txt,.doc,.docx" class="hidden">
+        </label>
+
+        <!-- Voice Command Button -->
+        <button id="voiceBtn" title="Speak to SLIME" class="bg-slate-800 hover:bg-slate-700 p-2.5 rounded-lg border border-slate-700 text-slate-300">
+          🎙️
+        </button>
+
+        <!-- Text Input -->
+        <input type="text" id="userInput" placeholder="Ask SLIME anything, open apps, or ask to write code..." class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-400">
+
+        <!-- Send Button -->
+        <button id="sendBtn" class="bg-emerald-500 hover:bg-emerald-600 font-semibold px-5 py-2.5 rounded-lg text-slate-950 transition">
+          Send
+        </button>
+      </div>
+      <div id="fileBadge" class="hidden text-xs text-emerald-400 flex items-center gap-1">
+        <span>📄 Attached file:</span> <span id="fileName" class="font-mono"></span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const chatLog = document.getElementById('chatLog');
+    const userInput = document.getElementById('userInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const voiceBtn = document.getElementById('voiceBtn');
+    const langSelect = document.getElementById('langSelect');
+    const sectorSelect = document.getElementById('sectorSelect');
+    const fileInput = document.getElementById('fileInput');
+    const fileBadge = document.getElementById('fileBadge');
+    const fileName = document.getElementById('fileName');
+
+    // File selection handler
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        fileName.textContent = e.target.files[0].name;
+        fileBadge.classList.remove('hidden');
+      }
+    });
+
+    // Voice Input (Web Speech API)
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition;
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onstart = () => { voiceBtn.classList.add('bg-red-600', 'text-white'); };
+      recognition.onend = () => { voiceBtn.classList.remove('bg-red-600', 'text-white'); };
+      recognition.onresult = (event) => {
+        userInput.value = event.results[0][0].transcript;
+        sendMessage();
+      };
+    } else {
+      voiceBtn.title = "Voice recognition not supported in this browser";
+      voiceBtn.disabled = true;
+    }
+
+    voiceBtn.addEventListener('click', () => {
+      if (recognition) {
+        recognition.lang = langSelect.value;
+        recognition.start();
+      }
+    });
+
+    // Text to Speech
+    function speak(text) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = langSelect.value;
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    function appendMessage(sender, text, isUser = false) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = isUser 
+        ? "bg-slate-800 border border-slate-700 rounded-lg p-4 ml-auto max-w-2xl" 
+        : "bg-slate-900 border border-slate-800 rounded-lg p-4 max-w-2xl";
+      msgDiv.innerHTML = `<p class="font-semibold ${isUser ? 'text-blue-400' : 'text-emerald-400'} mb-1">${sender}</p><p class="text-slate-200 whitespace-pre-wrap">${text}</p>`;
+      chatLog.appendChild(msgDiv);
+      chatLog.scrollTop = chatLog.scrollHeight;
+      return msgDiv;
+    }
+
+    async function sendMessage() {
+      const text = userInput.value.trim();
+      if (!text) return;
+
+      appendMessage('User', text, true);
+      userInput.value = '';
+
+      // Check if user is asking to open an app
+      if (text.toLowerCase().startsWith('open app') || text.toLowerCase().includes('open movie')) {
+        const query = encodeURIComponent(text.replace(/open app/i, '').trim());
+        const appMsg = `Direct Store Launch Links:\n• Android: https://play.google.com/store/search?q=${query}&c=apps\n• iOS: https://apps.apple.com/search?term=${query}`;
+        appendMessage('SLIME AI', appMsg);
+        return;
+      }
+
+      // Streamed response placeholder
+      const responseBox = appendMessage('SLIME AI', 'Thinking...');
+      const responseP = responseBox.querySelector('p:last-child');
+      responseP.textContent = '';
+
+      try {
+        // Points to your backend (or relative path if hosted together)
+        const response = await fetch('http://localhost:8000/api/chat/stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: text,
+            language: langSelect.value,
+            sector: sectorSelect.value
+          })
+        });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let fullText = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const lines = decoder.decode(value).split('\n');
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = JSON.parse(line.slice(6));
+              fullText += data.chunk;
+              responseP.textContent = fullText;
+              chatLog.scrollTop = chatLog.scrollHeight;
+            }
+          }
+        }
+        speak(fullText);
+      } catch (err) {
+        responseP.textContent = "SLIME is operating in offline demo mode. Connect to backend API to stream live worldwide answers.";
+      }
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+  </script>
+</body>
+</html>
